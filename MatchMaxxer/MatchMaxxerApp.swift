@@ -9,6 +9,9 @@ import SwiftUI
 
 @main
 struct MatchMaxxerApp: App {
+    init() {
+        LeaderboardManager.shared.authenticate()
+    }
     var body: some Scene {
         WindowGroup {
             ContentView()
