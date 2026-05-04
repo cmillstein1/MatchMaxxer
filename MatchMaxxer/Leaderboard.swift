@@ -6,6 +6,25 @@ import SwiftUI
 // will return an error and we fall back to the local-only history.
 enum LeaderboardID {
     static let colorAllTime = "matchmaxxer.color.alltime"
+    static let hexAllTime = "matchmaxxer.hex.alltime"
+    static let soundAllTime = "matchmaxxer.sound.alltime"
+
+    static func forCategory(_ slug: String) -> String? {
+        switch slug {
+        case "color": return colorAllTime
+        case "hex":   return hexAllTime
+        case "sound": return soundAllTime
+        default:      return nil
+        }
+    }
+
+    static func forCategory(_ category: GameCategory) -> String {
+        switch category {
+        case .color: return colorAllTime
+        case .hex:   return hexAllTime
+        case .sound: return soundAllTime
+        }
+    }
 }
 
 struct LocalScoreEntry: Identifiable, Codable {
@@ -73,14 +92,16 @@ final class LeaderboardManager {
         saveLocalHistory()
 
         guard isAuthenticated else { return }
-        let scaled = Int((score * 100).rounded()) // GameKit expects Int; we store hundredths
+        // GameKit expects Int; we store hundredths so leaderboards have 2 decimals of resolution.
+        let scaled = Int((score * 100).rounded())
+        guard let lbID = LeaderboardID.forCategory(category) else { return }
         Task {
             do {
                 try await GKLeaderboard.submitScore(
                     scaled,
                     context: 0,
                     player: GKLocalPlayer.local,
-                    leaderboardIDs: [LeaderboardID.colorAllTime]
+                    leaderboardIDs: [lbID]
                 )
             } catch {
                 await MainActor.run { self.lastError = error.localizedDescription }
@@ -88,12 +109,12 @@ final class LeaderboardManager {
         }
     }
 
-    func presentDashboard() {
+    func presentDashboard(for category: GameCategory = .color) {
         guard isAuthenticated else {
             authenticate()
             return
         }
-        let vc = GKGameCenterViewController(leaderboardID: LeaderboardID.colorAllTime,
+        let vc = GKGameCenterViewController(leaderboardID: LeaderboardID.forCategory(category),
                                             playerScope: .global,
                                             timeScope: .allTime)
         vc.gameCenterDelegate = LeaderboardCloseDelegate.shared
@@ -135,7 +156,15 @@ private final class LeaderboardCloseDelegate: NSObject, GKGameCenterControllerDe
 
 struct LocalLeaderboardView: View {
     @Bindable var manager: LeaderboardManager
+    // When non-nil: filter recent runs to that mode and route the GC button
+    // to that mode's leaderboard. nil = show all runs, default GC to color.
+    var category: GameCategory? = nil
     var onClose: () -> Void
+
+    private var visibleHistory: [LocalScoreEntry] {
+        guard let slug = category?.slug else { return manager.localHistory }
+        return manager.localHistory.filter { $0.category == slug }
+    }
 
     var body: some View {
         ZStack {
@@ -168,7 +197,7 @@ struct LocalLeaderboardView: View {
     private var header: some View {
         HStack(alignment: .top) {
             VStack(alignment: .leading, spacing: 2) {
-                Text("Your recent runs")
+                Text(category.map { "Your recent \($0.displayName.lowercased()) runs" } ?? "Your recent runs")
                     .font(.system(size: 22, weight: .black))
                     .foregroundStyle(.white)
                 Text(manager.isAuthenticated
@@ -190,7 +219,7 @@ struct LocalLeaderboardView: View {
 
     @ViewBuilder
     private var content: some View {
-        if manager.localHistory.isEmpty {
+        if visibleHistory.isEmpty {
             VStack(spacing: 10) {
                 Spacer()
                 Image(systemName: "list.number")
@@ -207,7 +236,7 @@ struct LocalLeaderboardView: View {
         } else {
             ScrollView {
                 VStack(spacing: 8) {
-                    ForEach(manager.localHistory) { entry in
+                    ForEach(visibleHistory) { entry in
                         historyRow(entry)
                     }
                     // Bottom inset so the last row isn't hidden behind the pinned CTA's gradient.
@@ -250,7 +279,7 @@ struct LocalLeaderboardView: View {
         Button(action: {
             SoundPlayer.haptic(.medium)
             if manager.isAuthenticated {
-                manager.presentDashboard()
+                manager.presentDashboard(for: category ?? .color)
             } else {
                 manager.authenticate()
             }

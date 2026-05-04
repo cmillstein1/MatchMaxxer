@@ -1,9 +1,28 @@
 import SwiftUI
 import Observation
 
-enum GameCategory {
+enum GameCategory: Identifiable, Hashable {
     case color
     case sound
+    case hex
+
+    var id: String { slug }
+
+    var slug: String {
+        switch self {
+        case .color: return "color"
+        case .sound: return "sound"
+        case .hex:   return "hex"
+        }
+    }
+
+    var displayName: String {
+        switch self {
+        case .color: return "Color"
+        case .sound: return "Sound"
+        case .hex:   return "Hex"
+        }
+    }
 }
 
 enum Difficulty: String, CaseIterable, Identifiable {
@@ -67,6 +86,7 @@ final class GameModel {
     var targets: [HSB] = []
     var distractors: [HSB] = []
     var targetFreqs: [Double] = []
+    var hexTargets: [HSB] = []
 
     var roundIndex: Int = 0
     var phase: Phase = .ready
@@ -83,7 +103,9 @@ final class GameModel {
 
     let totalRounds: Int = 5
 
-    var currentTarget: HSB { targets[roundIndex] }
+    var currentTarget: HSB {
+        category == .hex ? hexTargets[roundIndex] : targets[roundIndex]
+    }
     var currentTargetHz: Double { targetFreqs[roundIndex] }
     var currentDistractors: [HSB] {
         Array(distractors[roundIndex * 3 ..< roundIndex * 3 + 3])
@@ -118,6 +140,14 @@ final class GameModel {
         }
         var freqRng = SplitMix64(seed: seed &+ 2)
         targetFreqs = (0..<totalRounds).map { _ in randomTargetHz(using: &freqRng) }
+        var hexRng = SplitMix64(seed: seed &+ 3)
+        hexTargets = (0..<totalRounds).map { _ in
+            HSB(
+                h: hexRng.double(in: 0..<360),
+                s: hexRng.double(in: 25...100),
+                b: hexRng.double(in: 22...95)
+            )
+        }
         players = (0..<mode.playerCount).map { i in
             PlayerScorecard(name: mode.playerCount == 1 ? "You" : "Player \(i + 1)")
         }
@@ -144,7 +174,7 @@ final class GameModel {
 
     func beginRound() {
         guess = .neutral
-        phase = (difficulty == .hard) ? .ready : .ready
+        phase = .ready
         phaseStart = .now
         screen = .game
     }
@@ -157,7 +187,7 @@ final class GameModel {
         let s: Double
         let round: PlayerRound
         switch category {
-        case .color:
+        case .color, .hex:
             s = score(guess: guess, target: currentTarget)
             round = PlayerRound(guess: guess, score: s)
         case .sound:

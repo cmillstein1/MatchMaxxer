@@ -34,7 +34,7 @@ struct InstructionsView: View {
                 .padding(.bottom, 8)
 
                 // Title
-                Text(model.category == .color ? "color" : "sound")
+                Text(model.category.displayName.lowercased())
                     .font(.system(size: 84, weight: .black))
                     .foregroundStyle(.white)
                     .kerning(-2)
@@ -44,12 +44,16 @@ struct InstructionsView: View {
 
                 // Description
                 VStack(alignment: .leading, spacing: 14) {
-                    if model.category == .color {
+                    switch model.category {
+                    case .color:
                         Text("Your eyes are liars. Most people can't reliably remember a color from one second to the next — let alone five.")
                         Text("We'll show you 5 colors, one at a time. After each one, you'll dial it back in from memory using hue, saturation, and brightness sliders.")
-                    } else {
+                    case .sound:
                         Text("Most people think they have a good ear. Some people are wrong.")
                         Text("We'll play you 5 tones, one at a time. After each one, drag your finger up and down to dial the pitch back in from memory.")
+                    case .hex:
+                        Text("Designers swear they know hex codes. Let's find out.")
+                        Text("Ready, set, go. A hex code appears in its own color — 5 seconds on Easy, 3 on Hard. Then drag the eyedropper across the palette to find it.")
                     }
                 }
                 .font(.system(size: 15, weight: .regular))
@@ -112,7 +116,8 @@ struct InstructionsView: View {
             .padding(.bottom, 18)
         }
         .sheet(isPresented: $showLeaderboard) {
-            LocalLeaderboardView(manager: LeaderboardManager.shared) {
+            LocalLeaderboardView(manager: LeaderboardManager.shared,
+                                 category: model.category) {
                 showLeaderboard = false
             }
         }

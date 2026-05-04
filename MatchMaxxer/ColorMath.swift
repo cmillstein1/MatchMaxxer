@@ -159,6 +159,83 @@ func randomTargetHz(using rng: inout SplitMix64) -> Double {
     return pow(2.0, logHz)
 }
 
+extension HSB {
+    var hexString: String {
+        let rgb = hsbToSRGB(self)
+        let r = Int((rgb.r * 255).rounded()).clamped(to: 0...255)
+        let g = Int((rgb.g * 255).rounded()).clamped(to: 0...255)
+        let b = Int((rgb.b * 255).rounded()).clamped(to: 0...255)
+        return String(format: "#%02X%02X%02X", r, g, b)
+    }
+
+    init?(hex: String) {
+        var s = hex.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+        if s.hasPrefix("#") { s.removeFirst() }
+        guard s.count == 6, let v = UInt32(s, radix: 16) else { return nil }
+        let r = Double((v >> 16) & 0xFF) / 255
+        let g = Double((v >> 8) & 0xFF) / 255
+        let b = Double(v & 0xFF) / 255
+        self = sRGBToHSB(r: r, g: g, b: b)
+    }
+}
+
+// MARK: - HSB ↔ sRGB (display values, 0...1)
+
+func hsbToSRGB(_ hsb: HSB) -> (r: Double, g: Double, b: Double) {
+    let h = (hsb.h.truncatingRemainder(dividingBy: 360) + 360)
+        .truncatingRemainder(dividingBy: 360) / 60
+    let s = hsb.s / 100
+    let v = hsb.b / 100
+    let c = v * s
+    let x = c * (1 - abs(h.truncatingRemainder(dividingBy: 2) - 1))
+    let m = v - c
+    let (r1, g1, b1): (Double, Double, Double)
+    switch h {
+    case 0..<1: (r1, g1, b1) = (c, x, 0)
+    case 1..<2: (r1, g1, b1) = (x, c, 0)
+    case 2..<3: (r1, g1, b1) = (0, c, x)
+    case 3..<4: (r1, g1, b1) = (0, x, c)
+    case 4..<5: (r1, g1, b1) = (x, 0, c)
+    default:    (r1, g1, b1) = (c, 0, x)
+    }
+    return (r1 + m, g1 + m, b1 + m)
+}
+
+func sRGBToHSB(r: Double, g: Double, b: Double) -> HSB {
+    let mx = max(r, g, b), mn = min(r, g, b)
+    let d = mx - mn
+    var h: Double = 0
+    if d > 0 {
+        switch mx {
+        case r: h = ((g - b) / d).truncatingRemainder(dividingBy: 6)
+        case g: h = (b - r) / d + 2
+        default: h = (r - g) / d + 4
+        }
+        h *= 60
+        if h < 0 { h += 360 }
+    }
+    let s = mx == 0 ? 0 : d / mx
+    return HSB(h: h, s: s * 100, b: mx * 100)
+}
+
+extension Comparable {
+    func clamped(to range: ClosedRange<Self>) -> Self {
+        min(max(self, range.lowerBound), range.upperBound)
+    }
+}
+
+func hexVerdict(_ s: Double) -> String {
+    switch s {
+    case 9.5...: return "Pixel-perfect. Are you a hex code?"
+    case 8.5..<9.5: return "Surgical. Your retinas have a CS degree."
+    case 7.0..<8.5: return "Confident eye. The cones know hex."
+    case 5.0..<7.0: return "Right neighborhood. Wrong block."
+    case 3.0..<5.0: return "That hex code is filing a restraining order."
+    case 1.0..<3.0: return "Did you read it as base 10?"
+    default: return "A designer somewhere just rage-quit."
+    }
+}
+
 func scoreVerdict(_ s: Double) -> String {
     switch s {
     case 9.5...: return "Are you a color sommelier?"

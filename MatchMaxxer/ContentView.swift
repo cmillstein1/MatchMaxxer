@@ -51,6 +51,7 @@ struct ContentView: View {
             switch model.category {
             case .color: GameView(model: model)
             case .sound: SoundGameView(model: model)
+            case .hex:   HexGameView(model: model)
             }
         case .finalSummary:
             FinalSummaryView(

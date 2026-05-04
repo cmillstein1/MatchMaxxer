@@ -59,12 +59,13 @@ struct FinalSummaryView: View {
                 leaderboard.submit(
                     score: s,
                     difficulty: model.difficulty.rawValue,
-                    category: model.category == .color ? "color" : "sound"
+                    category: model.category.slug
                 )
             }
         }
         .sheet(isPresented: $showLocalLeaderboard) {
-            LocalLeaderboardView(manager: leaderboard) { showLocalLeaderboard = false }
+            LocalLeaderboardView(manager: leaderboard,
+                                 category: model.category) { showLocalLeaderboard = false }
         }
         .sheet(isPresented: $showShareSheet) {
             if let img = shareImage {
@@ -98,8 +99,7 @@ struct FinalSummaryView: View {
     }
 
     private var headerSubtitle: String {
-        let category = model.category == .color ? "Color" : "Sound"
-        return "\(category) · \(model.difficulty.rawValue)"
+        "\(model.category.displayName) · \(model.difficulty.rawValue)"
     }
 
     private var bottomButtons: some View {
@@ -190,12 +190,20 @@ struct FinalSummaryView: View {
         )
     }
 
+    private func verdictFor(_ avg: Double) -> String {
+        switch model.category {
+        case .color: return scoreVerdict(avg)
+        case .sound: return soundVerdict(avg)
+        case .hex:   return hexVerdict(avg)
+        }
+    }
+
     // MARK: - Solo card (Dialed-style hero)
 
     private func soloCard(player: PlayerScorecard) -> some View {
         let total = player.total
         let avg = player.rounds.isEmpty ? 0 : total / Double(player.rounds.count)
-        let verdict = (model.category == .color ? scoreVerdict(avg) : soundVerdict(avg))
+        let verdict = verdictFor(avg)
         return VStack(alignment: .leading, spacing: 14) {
             Text(verdict)
                 .font(.system(size: 17, weight: .semibold))
@@ -225,7 +233,7 @@ struct FinalSummaryView: View {
         // Local rank: how many of the player's local plays beat or equal this
         // score. Real worldwide rank is delegated to the GameKit leaderboard
         // sheet (which we link from the buttons below).
-        let category = model.category == .color ? "color" : "sound"
+        let category = model.category.slug
         let history = leaderboard.localHistory.filter { $0.category == category }
         let total = history.count
         let rank = max(1, history.filter { $0.score > score }.count + 1)
@@ -247,6 +255,11 @@ struct FinalSummaryView: View {
                 if model.category == .color, model.targets.indices.contains(index) {
                     ZStack {
                         model.targets[index].color
+                        round.guess.color.clipShape(TopLeftTriangle())
+                    }
+                } else if model.category == .hex, model.hexTargets.indices.contains(index) {
+                    ZStack {
+                        model.hexTargets[index].color
                         round.guess.color.clipShape(TopLeftTriangle())
                     }
                 } else if model.category == .sound, model.targetFreqs.indices.contains(index) {
@@ -346,13 +359,14 @@ struct FinalSummaryView: View {
         let card = ShareCardView(
             total: me.total,
             outOf: 50,
-            verdict: model.category == .color ? scoreVerdict(avg) : soundVerdict(avg),
+            verdict: verdictFor(avg),
             category: model.category,
             difficulty: model.difficulty.rawValue,
             initials: prefs.initials,
             rounds: me.rounds,
             targetsColor: model.targets,
-            targetsHz: model.targetFreqs
+            targetsHz: model.targetFreqs,
+            targetsHex: model.hexTargets
         )
         if let img = renderShareCard(card) {
             shareImage = img

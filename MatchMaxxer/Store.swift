@@ -19,6 +19,8 @@ final class Store {
     static let shared = Store()
 
     static let soundUnlockID = "com.millstein.MatchMaxxer.unlock.sound"
+    static let hexUnlockID = "com.millstein.MatchMaxxer.unlock.hex"
+    static let allProductIDs: [String] = [soundUnlockID, hexUnlockID]
 
     var products: [Product] = []
     var purchasedIDs: Set<String> = []
@@ -28,8 +30,33 @@ final class Store {
     var soundProduct: Product? {
         products.first { $0.id == Self.soundUnlockID }
     }
+    var hexProduct: Product? {
+        products.first { $0.id == Self.hexUnlockID }
+    }
     var isSoundUnlocked: Bool {
         purchasedIDs.contains(Self.soundUnlockID)
+    }
+    var isHexUnlocked: Bool {
+        purchasedIDs.contains(Self.hexUnlockID)
+    }
+
+    func productID(for category: GameCategory) -> String? {
+        switch category {
+        case .sound: return Self.soundUnlockID
+        case .hex:   return Self.hexUnlockID
+        case .color: return nil  // Free
+        }
+    }
+    func product(for category: GameCategory) -> Product? {
+        guard let id = productID(for: category) else { return nil }
+        return products.first { $0.id == id }
+    }
+    func isUnlocked(_ category: GameCategory) -> Bool {
+        switch category {
+        case .color: return true
+        case .sound: return isSoundUnlocked
+        case .hex:   return isHexUnlocked
+        }
     }
 
     private var updateListener: Task<Void, Never>?
@@ -47,7 +74,7 @@ final class Store {
 
     func loadProducts() async {
         do {
-            products = try await Product.products(for: [Self.soundUnlockID])
+            products = try await Product.products(for: Self.allProductIDs)
         } catch {
             lastError = error.localizedDescription
         }

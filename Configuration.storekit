@@ -16,6 +16,21 @@
       "productID" : "com.millstein.MatchMaxxer.unlock.sound",
       "referenceName" : "Sound Mode Unlock",
       "type" : "NonConsumable"
+    },
+    {
+      "displayPrice" : "1.99",
+      "familyShareable" : true,
+      "internalID" : "1000000002",
+      "localizations" : [
+        {
+          "description" : "Unlock Hex mode and find hex codes on the palette.",
+          "displayName" : "Hex Mode",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.millstein.MatchMaxxer.unlock.hex",
+      "referenceName" : "Hex Mode Unlock",
+      "type" : "NonConsumable"
     }
   ],
   "settings" : {

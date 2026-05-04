@@ -14,6 +14,7 @@ struct ShareCardView: View {
     let rounds: [PlayerRound]
     let targetsColor: [HSB]
     let targetsHz: [Double]
+    let targetsHex: [HSB]
 
     var body: some View {
         ZStack {
@@ -36,7 +37,7 @@ struct ShareCardView: View {
                             ],
                             startPoint: .topLeading, endPoint: .bottomTrailing))
                     Spacer()
-                    Text(category == .color ? "COLOR" : "SOUND")
+                    Text(category.displayName.uppercased())
                         .font(.system(size: 11, weight: .black))
                         .kerning(1.6)
                         .foregroundStyle(.white.opacity(0.55))
@@ -99,6 +100,11 @@ struct ShareCardView: View {
             if category == .color, targetsColor.indices.contains(index) {
                 ZStack {
                     targetsColor[index].color
+                    round.guess.color.clipShape(TopLeftTriangle())
+                }
+            } else if category == .hex, targetsHex.indices.contains(index) {
+                ZStack {
+                    targetsHex[index].color
                     round.guess.color.clipShape(TopLeftTriangle())
                 }
             } else if category == .sound, targetsHz.indices.contains(index) {
