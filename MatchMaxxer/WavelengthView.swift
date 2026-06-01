@@ -18,16 +18,16 @@ struct WavelengthView: View {
                 draw(into: ctx, size: size, time: context.date.timeIntervalSinceReferenceDate)
             }
             .drawingGroup()
-            .blendMode(.screen)
         }
     }
 
-    private func draw(into ctx: GraphicsContext, size: CGSize, time: Double) {
+    private func draw(into baseContext: GraphicsContext, size: CGSize, time: Double) {
+        var ctx = baseContext
         let centerX = size.width / 2
-        // Lots of densely packed thin strands so the wide regions read as a
-        // smooth wash instead of striped lines.
-        let strandCount = 64
-        let maxSpread = min(size.width * 0.22, 92)
+        // Densely packed thin strands so the wide regions read as a smooth,
+        // luminous wash instead of striped lines.
+        let strandCount = 84
+        let maxSpread = min(size.width * 0.26, 110)
 
         // Log-frequency 0..1 across the playable range
         let logFrac = max(0, min(1, (log2(max(20, frequency)) - log2(80.0)) /
@@ -41,10 +41,17 @@ struct WavelengthView: View {
         let twistTimeSpeed = 0.28 + logFrac * 0.45  // 0.28 .. 0.73
         let bulgeTimeSpeed = 0.13                   // slow drift on the envelope
 
-        let cyan   = SIMD3<Double>(0.18, 0.95, 0.92)
-        let purple = SIMD3<Double>(0.62, 0.32, 0.95)
+        let cyan   = SIMD3<Double>(0.20, 0.98, 0.95)
+        let purple = SIMD3<Double>(0.66, 0.30, 0.99)
 
-        let stepCount = 180
+        let stepCount = 160
+
+        // Build each strand's path + color once, then render it twice: a thick
+        // blurred halo for glow, and a crisp line on top. Additive blending
+        // makes the overlapping strands bloom toward the bright core — the same
+        // depth the vortex has.
+        var strands: [(path: Path, color: Color, opacity: Double)] = []
+        strands.reserveCapacity(strandCount)
         var points = [CGPoint](repeating: .zero, count: stepCount + 1)
 
         for i in 0..<strandCount {
@@ -87,16 +94,30 @@ struct WavelengthView: View {
             let mix = abs(strandFrac)
             let rgb = cyan * (1 - mix) + purple * mix
             let edgeFade = 1 - pow(abs(strandFrac), 1.5)
-            // Lower per-strand opacity since we have more of them; the
-            // additive screen blend brings the bundle back to a strong wash
-            // without the visible stripes.
-            let opacity = (0.10 + 0.30 * energy) * (0.45 + 0.55 * edgeFade)
+            let opacity = (0.12 + 0.36 * energy) * (0.45 + 0.55 * edgeFade)
+            strands.append((path,
+                            Color(red: rgb.x, green: rgb.y, blue: rgb.z),
+                            opacity))
+        }
 
-            ctx.stroke(
-                path,
-                with: .color(Color(red: rgb.x, green: rgb.y, blue: rgb.z).opacity(opacity)),
-                lineWidth: 0.55
-            )
+        // Additive blending — overlapping strands build into a glowing wash.
+        ctx.blendMode = .plusLighter
+
+        // Soft halo pass: thick + blurred.
+        ctx.drawLayer { glow in
+            glow.addFilter(.blur(radius: 6))
+            for s in strands {
+                glow.stroke(s.path,
+                            with: .color(s.color.opacity(s.opacity * 0.75)),
+                            lineWidth: 2.8)
+            }
+        }
+
+        // Crisp core pass on top.
+        for s in strands {
+            ctx.stroke(s.path,
+                       with: .color(s.color.opacity(s.opacity)),
+                       lineWidth: 0.7)
         }
     }
 }

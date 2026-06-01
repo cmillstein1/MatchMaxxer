@@ -12,71 +12,67 @@ struct MenuView: View {
     var body: some View {
         GeometryReader { geo in
             let isWide = geo.size.width > geo.size.height
-            VStack(spacing: 24) {
-                Spacer(minLength: 0)
-                HStack(alignment: .firstTextBaseline, spacing: 0) {
-                    Text("Match")
-                        .font(.system(size: 26, weight: .black))
-                        .foregroundStyle(.white)
-                        .kerning(-0.6)
-                    Text("Maxxer")
-                        .font(.system(size: 26, weight: .black))
-                        .foregroundStyle(.white)
-                        .kerning(-0.6)
-                        .italic()
-                    Text(".")
-                        .font(.system(size: 26, weight: .black))
-                        .foregroundStyle(LinearGradient(
-                            colors: [
-                                Color(red: 0.18, green: 0.95, blue: 0.92),
-                                Color(red: 0.62, green: 0.32, blue: 0.95)
-                            ],
-                            startPoint: .topLeading, endPoint: .bottomTrailing
-                        ))
+            VStack(spacing: 18) {
+                // Top bar: wordmark on the left, Leaderboard + Restore tucked
+                // top-right so the grid below gets the full height.
+                HStack(alignment: .center, spacing: 12) {
+                    HStack(alignment: .firstTextBaseline, spacing: 0) {
+                        Text("Match")
+                            .font(.system(size: 26, weight: .black))
+                            .foregroundStyle(.white)
+                            .kerning(-0.6)
+                        Text("Maxxer")
+                            .font(.system(size: 26, weight: .black))
+                            .foregroundStyle(.white)
+                            .kerning(-0.6)
+                            .italic()
+                        Text(".")
+                            .font(.system(size: 26, weight: .black))
+                            .foregroundStyle(LinearGradient(
+                                colors: [
+                                    Color(red: 0.18, green: 0.95, blue: 0.92),
+                                    Color(red: 0.62, green: 0.32, blue: 0.95)
+                                ],
+                                startPoint: .topLeading, endPoint: .bottomTrailing
+                            ))
+                    }
                     Spacer()
-                }
-                Spacer(minLength: 0)
-
-                if isWide {
-                    HStack(spacing: 16) {
-                        choiceCard(.color)
-                        choiceCard(.hex)
-                        choiceCard(.sound)
-                    }
-                } else {
-                    VStack(spacing: 14) {
-                        choiceCard(.color)
-                        choiceCard(.hex)
-                        choiceCard(.sound)
-                    }
-                }
-
-                Spacer(minLength: 0)
-
-                HStack(spacing: 10) {
-                    Button(action: { showLeaderboard = true }) {
-                        HStack(spacing: 8) {
-                            Image(systemName: "globe")
-                                .font(.system(size: 13, weight: .bold))
-                            Text("Leaderboard")
-                                .font(.system(size: 14, weight: .bold))
-                        }
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 18).padding(.vertical, 12)
-                        .background(Capsule().fill(.white.opacity(0.10)))
-                    }
-                    .buttonStyle(PressableButtonStyle())
-                    Button(action: { Task { await store.restore() } }) {
+                    Button(action: { SoundPlayer.haptic(.light); Task { await store.restore() } }) {
                         Text("Restore")
-                            .font(.system(size: 12, weight: .semibold))
+                            .font(.system(size: 13, weight: .semibold))
                             .foregroundStyle(.white.opacity(0.55))
                             .underline()
-                            .padding(.horizontal, 6).padding(.vertical, 8)
                     }
+                    Button(action: { SoundPlayer.haptic(.light); showLeaderboard = true }) {
+                        Image(systemName: "globe")
+                            .font(.system(size: 16, weight: .bold))
+                            .foregroundStyle(.white)
+                            .padding(11)
+                            .background(Circle().fill(.white.opacity(0.10)))
+                    }
+                    .buttonStyle(PressableButtonStyle())
                 }
-                .padding(.bottom, 8)
+
+                // Five modes — a scrollable grid keeps them all reachable on any
+                // device. Three columns in landscape, two in portrait.
+                ScrollView(showsIndicators: false) {
+                    LazyVGrid(
+                        columns: Array(repeating: GridItem(.flexible(), spacing: 14),
+                                       count: isWide ? 3 : 2),
+                        spacing: 14
+                    ) {
+                        choiceCard(.color)
+                        choiceCard(.hex)
+                        choiceCard(.sound)
+                        choiceCard(.time)
+                        choiceCard(.shape)
+                    }
+                    .padding(.vertical, 2)
+                }
             }
-            .padding(28)
+            .padding(.horizontal, 28)
+            .padding(.top, 16)
+            .padding(.bottom, 10)
         }
         .background(Color.black.ignoresSafeArea())
         .sheet(isPresented: $showLeaderboard) {
@@ -84,15 +80,21 @@ struct MenuView: View {
                 showLeaderboard = false
             }
         }
-        .sheet(item: $paywallCategory) { cat in
-            PaywallView(
-                category: cat,
-                onClose: { paywallCategory = nil },
-                onUnlocked: {
-                    paywallCategory = nil
-                    onChoose(cat)
-                }
-            )
+        // Paywall crossfades in (instead of a bottom sheet) so every locked mode
+        // enters with the same gentle fade as the unlocked ones.
+        .overlay {
+            if let cat = paywallCategory {
+                PaywallView(
+                    category: cat,
+                    onClose: { withAnimation(.easeInOut(duration: 0.4)) { paywallCategory = nil } },
+                    onUnlocked: {
+                        withAnimation(.easeInOut(duration: 0.4)) { paywallCategory = nil }
+                        onChoose(cat)
+                    }
+                )
+                .transition(.opacity)
+                .zIndex(2)
+            }
         }
     }
 
@@ -102,7 +104,7 @@ struct MenuView: View {
         Button {
             SoundPlayer.haptic(.medium)
             if isLocked {
-                paywallCategory = cat
+                withAnimation(.easeInOut(duration: 0.4)) { paywallCategory = cat }
             } else {
                 onChoose(cat)
             }
@@ -191,8 +193,18 @@ struct MenuView: View {
             }
             .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
         case .sound:
-            WavelengthView(frequency: 320, energy: 0.6)
+            WavelengthView(frequency: 320, energy: 0.9)
+                .opacity(0.95)
+                .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+                .allowsHitTesting(false)
+        case .time:
+            VortexView(energy: 0.5)
                 .opacity(0.85)
+                .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+                .allowsHitTesting(false)
+        case .shape:
+            ShapeShowcaseView(scale: 0.58)
+                .opacity(0.6)
                 .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
                 .allowsHitTesting(false)
         }
@@ -203,6 +215,8 @@ struct MenuView: View {
         case .color: return "paintpalette.fill"
         case .hex:   return "eyedropper"
         case .sound: return "waveform"
+        case .time:  return "hourglass"
+        case .shape: return "triangle"
         }
     }
 
@@ -211,6 +225,8 @@ struct MenuView: View {
         case .color: return "color"
         case .hex:   return "hex"
         case .sound: return "sound"
+        case .time:  return "time"
+        case .shape: return "shape"
         }
     }
 
@@ -219,6 +235,8 @@ struct MenuView: View {
         case .color: return "Recreate colors from memory."
         case .hex:   return "Find the hex code on the palette."
         case .sound: return "Recreate tones from memory."
+        case .time:  return "Recreate durations from memory."
+        case .shape: return "Recreate shapes from memory."
         }
     }
 

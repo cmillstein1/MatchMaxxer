@@ -9,6 +9,16 @@ struct InstructionsView: View {
     var body: some View {
         ZStack {
             Color.black.ignoresSafeArea()
+            backdrop
+                .ignoresSafeArea()
+            // Scrim: lets the movement breathe up top while keeping the lower
+            // controls fully legible.
+            LinearGradient(
+                colors: [.black.opacity(0.25), .black.opacity(0.55), .black.opacity(0.92)],
+                startPoint: .top, endPoint: .bottom
+            )
+            .ignoresSafeArea()
+
             VStack(alignment: .leading, spacing: 0) {
                 // Top bar
                 HStack {
@@ -54,6 +64,12 @@ struct InstructionsView: View {
                     case .hex:
                         Text("Designers swear they know hex codes. Let's find out.")
                         Text("Ready, set, go. A hex code appears in its own color — 5 seconds on Easy, 3 on Hard. Then drag the eyedropper across the palette to find it.")
+                    case .time:
+                        Text("You experience time constantly. Let's see how good you are at measuring it.")
+                        Text("We'll play you 5 durations — a vortex and a low hum. After each one, press and hold the screen to recreate it from memory.")
+                    case .shape:
+                        Text("Your spatial memory thinks it's better than it is. Let's test it.")
+                        Text("A shape slides into place at some size and angle — 5 seconds on Easy, 3 on Hard. Then pinch, two-finger rotate, and drag to put it back exactly where it was.")
                     }
                 }
                 .font(.system(size: 15, weight: .regular))
@@ -121,6 +137,50 @@ struct InstructionsView: View {
                 showLeaderboard = false
             }
         }
+    }
+
+    // Animated movement behind the start screen — mirrors each mode's menu card
+    // so the motion carries through from home into the mode's intro.
+    @ViewBuilder
+    private var backdrop: some View {
+        switch model.category {
+        case .color:
+            LinearGradient(gradient: HueGradient.stops,
+                           startPoint: .topLeading, endPoint: .bottomTrailing)
+                .opacity(0.22)
+        case .sound:
+            WavelengthView(frequency: 320, energy: 0.9)
+        case .hex:
+            hexBackdrop
+        case .time:
+            VortexView(energy: 0.55)
+        case .shape:
+            ShapeShowcaseView(scale: 0.85)
+        }
+    }
+
+    private var hexBackdrop: some View {
+        HStack {
+            Spacer()
+            VStack(alignment: .trailing, spacing: 10) {
+                hexSample("#FF3B30", hue: 0)
+                hexSample("#FF9500", hue: 30)
+                hexSample("#FFCC00", hue: 52)
+                hexSample("#34C759", hue: 135)
+                hexSample("#5AC8FA", hue: 200)
+                hexSample("#007AFF", hue: 220)
+                hexSample("#AF52DE", hue: 280)
+                hexSample("#FF2D55", hue: 340)
+            }
+            .padding(.trailing, 22)
+        }
+        .opacity(0.5)
+    }
+
+    private func hexSample(_ hex: String, hue: Double) -> some View {
+        Text(hex)
+            .font(.system(size: 24, weight: .heavy, design: .monospaced))
+            .foregroundStyle(Color(hue: hue / 360, saturation: 0.95, brightness: 1))
     }
 
     @ViewBuilder

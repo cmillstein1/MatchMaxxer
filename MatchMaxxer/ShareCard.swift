@@ -15,6 +15,7 @@ struct ShareCardView: View {
     let targetsColor: [HSB]
     let targetsHz: [Double]
     let targetsHex: [HSB]
+    let targetsDuration: [Double]
 
     var body: some View {
         ZStack {
@@ -112,6 +113,25 @@ struct ShareCardView: View {
                     Color(red: 0.05, green: 0.06, blue: 0.10)
                     WavelengthView(frequency: targetsHz[index], energy: 0.9, paused: true)
                 }
+            } else if category == .time, targetsDuration.indices.contains(index) {
+                ZStack {
+                    Color(red: 0.05, green: 0.06, blue: 0.10)
+                    VortexView(energy: 0.8, paused: true)
+                    VStack {
+                        Spacer()
+                        HStack {
+                            Spacer()
+                            Text(String(format: "%.1fs", targetsDuration[index]))
+                                .font(.system(size: 15, weight: .black))
+                                .foregroundStyle(.white.opacity(0.9))
+                                .monospacedDigit()
+                                .shadow(color: .black.opacity(0.55), radius: 1.5, y: 0.5)
+                        }
+                    }
+                    .padding(8)
+                }
+            } else if category == .shape, let gs = round.guessShape {
+                ShapeResultMini(transform: gs)
             } else {
                 Color.white.opacity(0.05)
             }

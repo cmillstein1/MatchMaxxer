@@ -5,6 +5,8 @@ enum GameCategory: Identifiable, Hashable {
     case color
     case sound
     case hex
+    case time
+    case shape
 
     var id: String { slug }
 
@@ -13,6 +15,8 @@ enum GameCategory: Identifiable, Hashable {
         case .color: return "color"
         case .sound: return "sound"
         case .hex:   return "hex"
+        case .time:  return "time"
+        case .shape: return "shape"
         }
     }
 
@@ -21,6 +25,8 @@ enum GameCategory: Identifiable, Hashable {
         case .color: return "Color"
         case .sound: return "Sound"
         case .hex:   return "Hex"
+        case .time:  return "Time"
+        case .shape: return "Shape"
         }
     }
 }
@@ -64,6 +70,8 @@ struct PlayerRound: Identifiable {
     let id = UUID()
     var guess: HSB = .neutral
     var guessHz: Double = 440
+    var guessDuration: Double = 0
+    var guessShape: ShapeTransform? = nil
     var score: Double
 }
 
@@ -87,6 +95,8 @@ final class GameModel {
     var distractors: [HSB] = []
     var targetFreqs: [Double] = []
     var hexTargets: [HSB] = []
+    var targetDurations: [Double] = []
+    var targetShapes: [ShapeTransform] = []
 
     var roundIndex: Int = 0
     var phase: Phase = .ready
@@ -97,6 +107,8 @@ final class GameModel {
 
     var guess: HSB = .neutral
     var guessHz: Double = 440
+    var guessDuration: Double = 0
+    var guessShape: ShapeTransform = .regular
     var memorizeRemainingCs: Int = 500
     var displayedScore: Double = 0
     var revealedScore: Double = 0
@@ -107,6 +119,8 @@ final class GameModel {
         category == .hex ? hexTargets[roundIndex] : targets[roundIndex]
     }
     var currentTargetHz: Double { targetFreqs[roundIndex] }
+    var currentTargetDuration: Double { targetDurations[roundIndex] }
+    var currentTargetShape: ShapeTransform { targetShapes[roundIndex] }
     var currentDistractors: [HSB] {
         Array(distractors[roundIndex * 3 ..< roundIndex * 3 + 3])
     }
@@ -148,14 +162,23 @@ final class GameModel {
                 b: hexRng.double(in: 22...95)
             )
         }
+        var durationRng = SplitMix64(seed: seed &+ 4)
+        targetDurations = (0..<totalRounds).map { _ in
+            randomTargetDuration(difficulty: difficulty, using: &durationRng)
+        }
+        var shapeRng = SplitMix64(seed: seed &+ 5)
+        targetShapes = (0..<totalRounds).map { _ in
+            randomShapeTransform(using: &shapeRng)
+        }
         players = (0..<mode.playerCount).map { i in
             PlayerScorecard(name: mode.playerCount == 1 ? "You" : "Player \(i + 1)")
         }
         roundIndex = 0
         currentPlayerIndex = 0
-        // Sound mode shows the audio-gate screen first so the user can put on
-        // headphones / unmute before tones start playing.
-        if category == .sound {
+        // Sound and Time both play audio (tones / a low hum), so they show the
+        // audio-gate screen first — it lets the user unmute / grab headphones
+        // and primes the audio session with a user gesture.
+        if category == .sound || category == .time {
             screen = .audioGate
         } else if mode.playerCount > 1 {
             screen = .handoff(playerIndex: 0)
@@ -193,6 +216,12 @@ final class GameModel {
         case .sound:
             s = scoreSound(guessHz: guessHz, targetHz: currentTargetHz)
             round = PlayerRound(guessHz: guessHz, score: s)
+        case .time:
+            s = scoreTime(guess: guessDuration, target: currentTargetDuration)
+            round = PlayerRound(guessDuration: guessDuration, score: s)
+        case .shape:
+            s = scoreShape(guess: guessShape, target: currentTargetShape)
+            round = PlayerRound(guessShape: guessShape, score: s)
         }
         players[currentPlayerIndex].rounds.append(round)
         revealedScore = s

@@ -159,6 +159,51 @@ func randomTargetHz(using rng: inout SplitMix64) -> Double {
     return pow(2.0, logHz)
 }
 
+// MARK: - Time
+
+enum TimeRange {
+    // Easy: shorter, rounder intervals that are easier to count. Hard: a wider,
+    // longer range where small percentage drifts add up to big absolute misses.
+    static func bounds(for difficulty: Difficulty) -> ClosedRange<Double> {
+        switch difficulty {
+        case .easy: return 2.0...6.0
+        case .hard: return 3.0...12.0
+        }
+    }
+    static let minSeconds: Double = 2.0
+    static let maxSeconds: Double = 12.0
+}
+
+func randomTargetDuration(difficulty: Difficulty, using rng: inout SplitMix64) -> Double {
+    let range = TimeRange.bounds(for: difficulty)
+    // Quantize to quarter-seconds so targets feel deliberate, not arbitrary.
+    let raw = rng.double(in: range)
+    return (raw * 4).rounded() / 4
+}
+
+// Time perception obeys Weber's law — the just-noticeable error scales with the
+// interval. Scoring on *relative* (percentage) error means a 0.3s miss on a 2s
+// target is judged the same as a 1.8s miss on a 12s target.
+func scoreTime(guess: Double, target: Double) -> Double {
+    guard target > 0 else { return 0 }
+    let pctError = abs(guess - target) / target
+    // Sigmoid centered at 15% error → 5/10. Within ~5% lands around 8.5/10.
+    let base = 10.0 / (1.0 + pow(pctError / 0.15, 1.6))
+    return max(0, min(10, base))
+}
+
+func timeVerdict(_ s: Double) -> String {
+    switch s {
+    case 9.5...: return "Are you a human stopwatch?"
+    case 8.5..<9.5: return "Eerie. Your internal clock is atomic."
+    case 7.0..<8.5: return "Solid sense of time. The metronome nods."
+    case 5.0..<7.0: return "Roughly right. Time got a little slippery."
+    case 3.0..<5.0: return "Time is a flat circle and you missed it."
+    case 1.0..<3.0: return "You counted Mississippi-ishly."
+    default: return "You and time are not on speaking terms."
+    }
+}
+
 extension HSB {
     var hexString: String {
         let rgb = hsbToSRGB(self)

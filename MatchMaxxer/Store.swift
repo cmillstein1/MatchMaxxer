@@ -20,7 +20,9 @@ final class Store {
 
     static let soundUnlockID = "com.millstein.MatchMaxxer.unlock.sound"
     static let hexUnlockID = "com.millstein.MatchMaxxer.unlock.hex"
-    static let allProductIDs: [String] = [soundUnlockID, hexUnlockID]
+    static let timeUnlockID = "com.millstein.MatchMaxxer.unlock.time"
+    static let shapeUnlockID = "com.millstein.MatchMaxxer.unlock.shape"
+    static let allProductIDs: [String] = [soundUnlockID, hexUnlockID, timeUnlockID, shapeUnlockID]
 
     var products: [Product] = []
     var purchasedIDs: Set<String> = []
@@ -33,17 +35,31 @@ final class Store {
     var hexProduct: Product? {
         products.first { $0.id == Self.hexUnlockID }
     }
+    var timeProduct: Product? {
+        products.first { $0.id == Self.timeUnlockID }
+    }
+    var shapeProduct: Product? {
+        products.first { $0.id == Self.shapeUnlockID }
+    }
     var isSoundUnlocked: Bool {
         purchasedIDs.contains(Self.soundUnlockID)
     }
     var isHexUnlocked: Bool {
         purchasedIDs.contains(Self.hexUnlockID)
     }
+    var isTimeUnlocked: Bool {
+        purchasedIDs.contains(Self.timeUnlockID)
+    }
+    var isShapeUnlocked: Bool {
+        purchasedIDs.contains(Self.shapeUnlockID)
+    }
 
     func productID(for category: GameCategory) -> String? {
         switch category {
         case .sound: return Self.soundUnlockID
         case .hex:   return Self.hexUnlockID
+        case .time:  return Self.timeUnlockID
+        case .shape: return Self.shapeUnlockID
         case .color: return nil  // Free
         }
     }
@@ -53,9 +69,11 @@ final class Store {
     }
     func isUnlocked(_ category: GameCategory) -> Bool {
         switch category {
-        case .color: return true
+        case .color: return true  // Free
         case .sound: return isSoundUnlocked
         case .hex:   return isHexUnlocked
+        case .time:  return isTimeUnlocked
+        case .shape: return isShapeUnlocked
         }
     }
 

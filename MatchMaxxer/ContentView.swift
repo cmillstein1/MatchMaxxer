@@ -52,6 +52,8 @@ struct ContentView: View {
             case .color: GameView(model: model)
             case .sound: SoundGameView(model: model)
             case .hex:   HexGameView(model: model)
+            case .time:  TimeGameView(model: model)
+            case .shape: ShapeGameView(model: model)
             }
         case .finalSummary:
             FinalSummaryView(

@@ -31,6 +31,36 @@
       "productID" : "com.millstein.MatchMaxxer.unlock.hex",
       "referenceName" : "Hex Mode Unlock",
       "type" : "NonConsumable"
+    },
+    {
+      "displayPrice" : "1.99",
+      "familyShareable" : true,
+      "internalID" : "1000000003",
+      "localizations" : [
+        {
+          "description" : "Unlock Time mode and recreate durations from memory.",
+          "displayName" : "Time Mode",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.millstein.MatchMaxxer.unlock.time",
+      "referenceName" : "Time Mode Unlock",
+      "type" : "NonConsumable"
+    },
+    {
+      "displayPrice" : "1.99",
+      "familyShareable" : true,
+      "internalID" : "1000000004",
+      "localizations" : [
+        {
+          "description" : "Unlock Shape mode and recreate shapes from memory.",
+          "displayName" : "Shape Mode",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.millstein.MatchMaxxer.unlock.shape",
+      "referenceName" : "Shape Mode Unlock",
+      "type" : "NonConsumable"
     }
   ],
   "settings" : {

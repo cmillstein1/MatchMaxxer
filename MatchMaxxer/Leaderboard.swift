@@ -8,12 +8,16 @@ enum LeaderboardID {
     static let colorAllTime = "matchmaxxer.color.alltime"
     static let hexAllTime = "matchmaxxer.hex.alltime"
     static let soundAllTime = "matchmaxxer.sound.alltime"
+    static let timeAllTime = "matchmaxxer.time.alltime"
+    static let shapeAllTime = "matchmaxxer.shape.alltime"
 
     static func forCategory(_ slug: String) -> String? {
         switch slug {
         case "color": return colorAllTime
         case "hex":   return hexAllTime
         case "sound": return soundAllTime
+        case "time":  return timeAllTime
+        case "shape": return shapeAllTime
         default:      return nil
         }
     }
@@ -23,6 +27,8 @@ enum LeaderboardID {
         case .color: return colorAllTime
         case .hex:   return hexAllTime
         case .sound: return soundAllTime
+        case .time:  return timeAllTime
+        case .shape: return shapeAllTime
         }
     }
 }

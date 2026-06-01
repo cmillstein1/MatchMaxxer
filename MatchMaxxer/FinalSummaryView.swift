@@ -195,6 +195,8 @@ struct FinalSummaryView: View {
         case .color: return scoreVerdict(avg)
         case .sound: return soundVerdict(avg)
         case .hex:   return hexVerdict(avg)
+        case .time:  return timeVerdict(avg)
+        case .shape: return shapeVerdict(avg)
         }
     }
 
@@ -268,6 +270,22 @@ struct FinalSummaryView: View {
                         WavelengthView(frequency: model.targetFreqs[index],
                                        energy: 0.85, paused: true)
                     }
+                } else if model.category == .time, model.targetDurations.indices.contains(index) {
+                    ZStack {
+                        Color(red: 0.05, green: 0.06, blue: 0.10)
+                        VortexView(energy: 0.7, paused: true)
+                        VStack {
+                            Spacer()
+                            Text(String(format: "%.1fs", model.targetDurations[index]))
+                                .font(.system(size: 12, weight: .black))
+                                .foregroundStyle(.white.opacity(0.85))
+                                .monospacedDigit()
+                                .shadow(color: .black.opacity(0.6), radius: 1.5, y: 0.5)
+                        }
+                        .padding(6)
+                    }
+                } else if model.category == .shape, let gs = round.guessShape {
+                    ShapeResultMini(transform: gs)
                 } else {
                     Color.white.opacity(0.05)
                 }
@@ -366,8 +384,10 @@ struct FinalSummaryView: View {
             rounds: me.rounds,
             targetsColor: model.targets,
             targetsHz: model.targetFreqs,
-            targetsHex: model.hexTargets
+            targetsHex: model.hexTargets,
+            targetsDuration: model.targetDurations
         )
+        // Note: per-round shape guesses live on the rounds themselves.
         if let img = renderShareCard(card) {
             shareImage = img
             showShareSheet = true

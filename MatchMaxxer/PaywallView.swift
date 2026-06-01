@@ -73,8 +73,8 @@ struct PaywallView: View {
     private var backdrop: some View {
         switch category {
         case .sound:
-            WavelengthView(frequency: 320, energy: 0.7)
-                .opacity(0.85)
+            WavelengthView(frequency: 320, energy: 0.95)
+                .opacity(0.95)
                 .ignoresSafeArea()
         case .hex:
             // Same column-of-rainbow-codes vibe as the menu card, scaled up.
@@ -93,6 +93,14 @@ struct PaywallView: View {
                 .padding(.trailing, 24)
             }
             .ignoresSafeArea()
+        case .time:
+            VortexView(energy: 0.7)
+                .opacity(0.9)
+                .ignoresSafeArea()
+        case .shape:
+            ShapeShowcaseView()
+                .opacity(0.55)
+                .ignoresSafeArea()
         case .color:
             EmptyView()
         }
@@ -125,6 +133,8 @@ struct PaywallView: View {
         switch category {
         case .sound: return "Recreate tones from memory."
         case .hex:   return "Find hex codes on the palette."
+        case .time:  return "Recreate durations from memory."
+        case .shape: return "Recreate shapes from memory."
         case .color: return ""
         }
     }
@@ -139,6 +149,16 @@ struct PaywallView: View {
                 bullet("globe", "Same global leaderboard as Color")
             case .hex:
                 bullet("eyedropper", "Five hex codes per round, eyedropper to match")
+                bullet("dial.high", "Easy and Hard reveal timings")
+                bullet("person.2.fill", "Pass-and-play multiplayer")
+                bullet("globe", "Dedicated global leaderboard")
+            case .time:
+                bullet("hourglass", "Five durations per round, hold to recreate")
+                bullet("dial.high", "Easy and Hard duration ranges")
+                bullet("person.2.fill", "Pass-and-play multiplayer")
+                bullet("globe", "Dedicated global leaderboard")
+            case .shape:
+                bullet("triangle", "Five shapes per round, transform to match")
                 bullet("dial.high", "Easy and Hard reveal timings")
                 bullet("person.2.fill", "Pass-and-play multiplayer")
                 bullet("globe", "Dedicated global leaderboard")
