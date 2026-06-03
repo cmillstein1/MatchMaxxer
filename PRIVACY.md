@@ -6,7 +6,7 @@ MatchMaxxer ("the app") is a single-player iOS game. We've designed it to collec
 
 ## Who we are
 
-MatchMaxxer is developed by Casey Millstein ("we", "us"). You can reach us at **henry.langmack@gmail.com** for any privacy questions or requests.
+MatchMaxxer is developed by Casey Millstein ("we", "us"). You can reach us at **cmillstein1@me.com** for any privacy questions or requests.
 
 ## Data the app stores on your device
 
@@ -48,4 +48,4 @@ If we make material changes, we'll update the "Last updated" date above and, whe
 
 ## Contact
 
-Questions, complaints, or data requests: **henry.langmack@gmail.com**.
+Questions, complaints, or data requests: **cmillstein1@me.com**.
