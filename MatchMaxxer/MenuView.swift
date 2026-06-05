@@ -37,12 +37,6 @@ struct MenuView: View {
                             ))
                     }
                     Spacer()
-                    Button(action: { SoundPlayer.haptic(.light); Task { await store.restore() } }) {
-                        Text("Restore")
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundStyle(.white.opacity(0.55))
-                            .underline()
-                    }
                     Button(action: { SoundPlayer.haptic(.light); showLeaderboard = true }) {
                         Image(systemName: "globe")
                             .font(.system(size: 16, weight: .bold))
@@ -68,6 +62,24 @@ struct MenuView: View {
                         choiceCard(.shape)
                     }
                     .padding(.vertical, 2)
+                }
+
+                // Legal / account utilities live at the bottom so the wordmark
+                // up top gets the full width without being squeezed.
+                HStack(spacing: 18) {
+                    Link(destination: URL(string: "https://github.com/cmillstein1/MatchMaxxer/blob/main/PRIVACY.md")!) {
+                        Text("Privacy")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(.white.opacity(0.55))
+                            .underline()
+                    }
+                    .simultaneousGesture(TapGesture().onEnded { SoundPlayer.haptic(.light) })
+                    Button(action: { SoundPlayer.haptic(.light); Task { await store.restore() } }) {
+                        Text("Restore")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(.white.opacity(0.55))
+                            .underline()
+                    }
                 }
             }
             .padding(.horizontal, 28)
