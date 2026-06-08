@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ContentView: View {
     @State private var model = GameModel()
+    @Bindable private var leaderboard = LeaderboardManager.shared
 
     var body: some View {
         ZStack {
@@ -12,6 +13,14 @@ struct ContentView: View {
         }
         .preferredColorScheme(.dark)
         .animation(.easeInOut(duration: 0.45), value: screenId)
+        // Global leaderboard consent. Attached at the root so it can surface
+        // whenever the user signs into Game Center, not just after a game.
+        .alert("Share to global leaderboard?", isPresented: $leaderboard.showConsentPrompt) {
+            Button("Not now", role: .cancel) { leaderboard.declineGlobalConsent() }
+            Button("Share my scores") { leaderboard.grantGlobalConsent() }
+        } message: {
+            Text("Post your scores to the worldwide Game Center leaderboard so you can compete with other players? Your Game Center alias and scores will be visible to others. Your scores are always saved on this device either way, and you can change this anytime from the leaderboard.")
+        }
     }
 
     private var screenId: String {

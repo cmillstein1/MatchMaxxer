@@ -61,9 +61,31 @@ final class LeaderboardManager {
     var lastError: String?
     var localHistory: [LocalScoreEntry] = []
 
+    // Apple requires explicit user consent before we upload scores to the
+    // *global* Game Center leaderboard. Local history is always kept on-device
+    // and is unaffected by this. `hasGlobalConsent` is the user's choice;
+    // `consentAsked` records whether we've prompted yet so we only ask once.
+    var hasGlobalConsent: Bool {
+        didSet { UserDefaults.standard.set(hasGlobalConsent, forKey: consentKey) }
+    }
+    var consentAsked: Bool {
+        didSet { UserDefaults.standard.set(consentAsked, forKey: consentAskedKey) }
+    }
+    // Drives a one-time consent alert in the UI. Set when a score is ready to
+    // upload but the user hasn't been asked yet.
+    var showConsentPrompt: Bool = false
+
+    // Most recent score waiting on a consent decision, so we can upload it
+    // immediately if the user opts in from the prompt.
+    private var pendingScore: (scaled: Int, leaderboardID: String)?
+
     private let historyKey = "matchmaxxer.localHistory.v1"
+    private let consentKey = "matchmaxxer.leaderboard.globalConsent.v1"
+    private let consentAskedKey = "matchmaxxer.leaderboard.consentAsked.v1"
 
     private init() {
+        self.hasGlobalConsent = UserDefaults.standard.bool(forKey: consentKey)
+        self.consentAsked = UserDefaults.standard.bool(forKey: consentAskedKey)
         loadLocalHistory()
     }
 
@@ -81,6 +103,11 @@ final class LeaderboardManager {
             self.isAuthenticated = player.isAuthenticated
             if player.isAuthenticated {
                 self.localPlayerName = player.alias
+                // First time signed in and never asked: get consent up front,
+                // before any score is ready to upload.
+                if !self.consentAsked {
+                    self.showConsentPrompt = true
+                }
             }
         }
     }
@@ -101,18 +128,64 @@ final class LeaderboardManager {
         // GameKit expects Int; we store hundredths so leaderboards have 2 decimals of resolution.
         let scaled = Int((score * 100).rounded())
         guard let lbID = LeaderboardID.forCategory(category) else { return }
+
+        // Consent gate: never upload to the global leaderboard without the
+        // user's explicit opt-in. If they haven't been asked, stash the score
+        // and trigger the consent prompt; the local entry above is already saved.
+        guard hasGlobalConsent else {
+            if !consentAsked {
+                pendingScore = (scaled, lbID)
+                showConsentPrompt = true
+            }
+            return
+        }
+        uploadGlobal(scaled: scaled, leaderboardID: lbID)
+    }
+
+    private func uploadGlobal(scaled: Int, leaderboardID: String) {
         Task {
             do {
                 try await GKLeaderboard.submitScore(
                     scaled,
                     context: 0,
                     player: GKLocalPlayer.local,
-                    leaderboardIDs: [lbID]
+                    leaderboardIDs: [leaderboardID]
                 )
             } catch {
                 await MainActor.run { self.lastError = error.localizedDescription }
             }
         }
+    }
+
+    // MARK: - Consent
+
+    /// User opted in from the prompt. Persists the choice and uploads any score
+    /// that was waiting on the decision.
+    func grantGlobalConsent() {
+        hasGlobalConsent = true
+        consentAsked = true
+        showConsentPrompt = false
+        if let pending = pendingScore {
+            uploadGlobal(scaled: pending.scaled, leaderboardID: pending.leaderboardID)
+            pendingScore = nil
+        }
+    }
+
+    /// User declined. We remember that we've asked so we don't nag, and drop
+    /// the pending score.
+    func declineGlobalConsent() {
+        hasGlobalConsent = false
+        consentAsked = true
+        showConsentPrompt = false
+        pendingScore = nil
+    }
+
+    /// Toggle used by the leaderboard's privacy control so users can change
+    /// their mind later.
+    func setGlobalConsent(_ enabled: Bool) {
+        hasGlobalConsent = enabled
+        consentAsked = true
+        if !enabled { pendingScore = nil }
     }
 
     func presentDashboard(for category: GameCategory = .color) {
@@ -182,6 +255,12 @@ struct LocalLeaderboardView: View {
                     .padding(.bottom, 14)
 
                 content
+
+                if manager.isAuthenticated {
+                    consentToggle
+                        .padding(.horizontal, 22)
+                        .padding(.top, 6)
+                }
 
                 pinnedCTA
                     .padding(.horizontal, 16)
@@ -274,6 +353,28 @@ struct LocalLeaderboardView: View {
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(.white.opacity(0.45))
         }
+        .padding(.horizontal, 14).padding(.vertical, 10)
+        .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(.white.opacity(0.06))
+        )
+    }
+
+    private var consentToggle: some View {
+        Toggle(isOn: Binding(
+            get: { manager.hasGlobalConsent },
+            set: { manager.setGlobalConsent($0) }
+        )) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Share scores globally")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(.white)
+                Text("Post your scores to the worldwide leaderboard.")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(.white.opacity(0.5))
+            }
+        }
+        .tint(.white)
         .padding(.horizontal, 14).padding(.vertical, 10)
         .background(
             RoundedRectangle(cornerRadius: 12, style: .continuous)

@@ -23,7 +23,7 @@ struct FinalSummaryView: View {
     @State private var shareImage: UIImage?
     @State private var initialsDraft: String = ""
     @FocusState private var initialsFocused: Bool
-    var leaderboard = LeaderboardManager.shared
+    @Bindable var leaderboard = LeaderboardManager.shared
     private var prefs: UserPrefs { UserPrefs.shared }
 
     private var solo: Bool { model.players.count <= 1 }
