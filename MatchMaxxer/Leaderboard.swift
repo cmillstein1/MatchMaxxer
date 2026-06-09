@@ -61,6 +61,12 @@ final class LeaderboardManager {
     var lastError: String?
     var localHistory: [LocalScoreEntry] = []
 
+    // GameKit only surfaces its sign-in UI once per launch. Once the auth flow
+    // has resolved (handler called with no view controller), re-running
+    // `authenticate()` is a no-op, so the in-app button can't trigger sign-in
+    // again — we route the user to Settings instead.
+    private var authResolved: Bool = false
+
     // Apple requires explicit user consent before we upload scores to the
     // *global* Game Center leaderboard. Local history is always kept on-device
     // and is unaffected by this. `hasGlobalConsent` is the user's choice;
@@ -99,6 +105,9 @@ final class LeaderboardManager {
                 self.present(vc)
                 return
             }
+            // No view controller means GameKit has finished the sign-in flow
+            // (whether it succeeded or not). It won't present again this launch.
+            self.authResolved = true
             let player = GKLocalPlayer.local
             self.isAuthenticated = player.isAuthenticated
             if player.isAuthenticated {
@@ -188,6 +197,23 @@ final class LeaderboardManager {
         if !enabled { pendingScore = nil }
     }
 
+    /// Backs the "Sign in to Game Center" button. If GameKit can still surface
+    /// its sign-in UI (first attempt this launch), trigger it; otherwise the
+    /// only way the user can sign in is through Settings, so open that.
+    func signInTapped() {
+        guard !isAuthenticated else { return }
+        if authResolved {
+            openGameCenterSettings()
+        } else {
+            authenticate()
+        }
+    }
+
+    private func openGameCenterSettings() {
+        guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
+        UIApplication.shared.open(url)
+    }
+
     func presentDashboard(for category: GameCategory = .color) {
         guard isAuthenticated else {
             authenticate()
@@ -201,9 +227,13 @@ final class LeaderboardManager {
     }
 
     private func present(_ vc: UIViewController) {
-        let scenes = UIApplication.shared.connectedScenes
-        guard let window = scenes.compactMap({ $0 as? UIWindowScene }).first?.keyWindow,
-              let root = window.rootViewController else { return }
+        let windowScenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+        // Prefer the foreground-active scene; fall back to any scene that has a
+        // key window. Using `.first` alone can pick a background/inactive scene
+        // whose keyWindow is nil, which would silently drop the presentation.
+        let keyWindow = windowScenes.first(where: { $0.activationState == .foregroundActive })?.keyWindow
+            ?? windowScenes.compactMap { $0.keyWindow }.first
+        guard let window = keyWindow, let root = window.rootViewController else { return }
         var top = root
         while let presented = top.presentedViewController { top = presented }
         top.present(vc, animated: true)
@@ -388,7 +418,7 @@ struct LocalLeaderboardView: View {
             if manager.isAuthenticated {
                 manager.presentDashboard(for: category ?? .color)
             } else {
-                manager.authenticate()
+                manager.signInTapped()
             }
         }) {
             HStack(spacing: 10) {
